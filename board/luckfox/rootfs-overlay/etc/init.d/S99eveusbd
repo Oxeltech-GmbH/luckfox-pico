@@ -1,0 +1,44 @@
+#!/bin/sh
+
+DAEMON="/opt/ElectronicTeam/eveusb/bin/eveusbd"
+OPTIONS="--moduless --loglevel=notice"
+WATCHDOG="/usr/bin/eveusbd_watchdog.sh"
+LOGFILE="/var/log/eveusbd_watchdog.log"
+
+case "$1" in
+    start)
+        echo "Starting eveusbd watchdog..."
+        if [ ! -f "$WATCHDOG" ]; then
+            cat << 'EOF' > "$WATCHDOG"
+#!/bin/sh
+LOGFILE="/var/log/eveusbd_watchdog.log"
+DAEMON="/opt/ElectronicTeam/eveusb/bin/eveusbd"
+OPTIONS="--moduless --loglevel=notice"
+
+while true; do
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting eveusbd" >> "$LOGFILE"
+    $DAEMON $OPTIONS >> "$LOGFILE" 2>&1
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - eveusbd crashed with exit code $? -- restarting in 5 seconds..." >> "$LOGFILE"
+    sleep 5
+done
+EOF
+            chmod +x "$WATCHDOG"
+        fi
+        $WATCHDOG &
+        ;;
+    stop)
+        echo "Stopping eveusbd and watchdog..."
+        killall eveusbd
+        killall eveusbd_watchdog.sh
+        ;;
+    restart)
+        $0 stop
+        sleep 2
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit 0

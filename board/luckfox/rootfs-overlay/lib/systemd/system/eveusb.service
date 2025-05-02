@@ -1,0 +1,24 @@
+# eveusb - USB Network Gate daemon
+#
+# USB Network Gate allows you to share USB devices with remote computers
+# and easily connect to shared devices at the remote side.
+
+# This file should be copied to /lib/systemd/system.
+
+[Unit]
+Description=USB Network Gate daemon
+After=local-fs.target 
+After=network.target 
+After=syslog.target
+
+[Service]
+# User=eveusb
+KillMode=process
+TimeoutStopSec=60
+IgnoreSIGPIPE=true
+ExecStartPre=/sbin/modprobe eveusb
+ExecStart=/opt/ElectronicTeam/eveusb/bin/eveusbd --process
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,101 @@
+#!/bin/sh
+
+# USB Network Gate daemon SysV init script
+# Copyright (C) 2024 Electronic Team, Inc.
+
+# This file should be copied to /etc/init.d (Debian) or /etc/rc.d/init.d (Fedora)
+
+# chkconfig: 2345 80 20
+# description: USB Network Gate daemon
+
+### BEGIN INIT INFO
+# Provides: eveusb
+# Required-Start: $syslog $local_fs $network
+# Required-Stop: $syslog $local_fs $network
+# Should-Start: $time $named
+# Should-Stop: $time $named
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: USB Network Gate daemon
+# Description: USB Network Gate daemon by Electronic Team, Inc.
+### END INIT INFO
+
+# See: /etc/init.d/skeleton or /usr/share/doc/initscripts-*/sysvinitfiles
+
+NAME=eveusbd
+DAEMON=/opt/ElectronicTeam/eveusb/bin/$NAME
+
+test -x "$DAEMON" || exit 0 # exit if the package is removed but not purged
+
+if which initctl >/dev/null 2>&1 && initctl version | grep -q upstart && test -x /lib/init/upstart-job
+then
+	. /lib/init/upstart-job "$(basename "$0")" "$@"
+	exit
+fi
+     
+if which start-stop-daemon >/dev/null 2>&1 ; then
+	DEB=1
+#	. /lib/lsb/init-functions
+elif [ -f /etc/rc.d/init.d/functions ] ; then
+	RPM=1
+	. /etc/rc.d/init.d/functions
+fi
+
+case "$1" in
+	start)
+		/sbin/modprobe eveusb
+		if [ "$DEB" ] ; then
+			start-stop-daemon --start --oknodo --quiet --exec $DAEMON
+		elif [ "$RPM" ] ; then
+			daemon $DAEMON
+		else
+			$DAEMON
+		fi
+		;;
+	stop)
+		if [ "$DEB" ] ; then
+			start-stop-daemon --stop --oknodo --quiet --exec $DAEMON
+		elif [ "$RPM" ] ; then
+			killproc -d 30 $NAME
+		else
+			killall $NAME
+		fi
+		;;
+	force-stop)
+		if [ "$DEB" ] ; then
+			start-stop-daemon --stop --signal 9 --oknodo --quiet --exec $DAEMON # --signal KILL
+		elif [ "$RPM" ] ; then
+			killproc -d 3 $NAME
+		else
+			killall -KILL $NAME
+		fi
+		;;	
+	restart|condrestart|try-restart|force-reload)
+		"$0" stop
+		"$0" start
+		;;
+	force-restart)
+		"$0" force-stop
+		"$0" start
+		;;
+	reload)
+		if [ "$DEB" ] ; then
+			start-stop-daemon --stop --signal 1 --oknodo --quiet --exec $DAEMON # --signal HUP
+		elif [ "$RPM" ] ; then
+			killproc $NAME -HUP
+		else
+			killall -HUP $NAME
+		fi
+		;;
+	status)
+		if [ "$(pidof $DAEMON)" ] ; then # status "$(basename "$0")" always false on RHEL5
+			echo "$NAME is running"
+		else
+			echo "$NAME is not running"
+		fi 
+		;;
+	*)
+		echo "Usage: $(basename "$0") {start|stop|force-stop|restart|condrestart|try-restart|force-restart|reload|force-reload|status}"
+		exit 3
+		;;
+esac

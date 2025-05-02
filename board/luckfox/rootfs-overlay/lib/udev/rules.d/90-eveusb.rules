@@ -1,0 +1,11 @@
+# USB Network Gate "eveusb" rules
+# Copyright (C) 2024 Electronic Team, Inc.
+
+# This file should be copied to /lib/udev/rules.d.
+# In any conflict, the last rule wins.
+
+# 'libusb' device nodes, see 50-udev-default.rules
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", OWNER="eveusb"
+
+# eveusb.ko module
+KERNEL=="eveusb", OWNER="eveusb"

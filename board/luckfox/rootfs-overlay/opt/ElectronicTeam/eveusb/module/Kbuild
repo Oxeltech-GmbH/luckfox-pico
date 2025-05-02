@@ -1,0 +1,71 @@
+# <kernel>/Documentation/kbuild/kbuild.txt
+# make V=1 to verbose output
+
+CONFIG_USB_EVEUSB ?= m
+obj-$(CONFIG_USB_EVEUSB) := eveusb.o
+
+eveusb-objs := \
+	eveusb-vhci-hcd.o \
+	eveusb-vhci-iocifc.o
+
+VHCI_HCD_VERSION := 1.0
+VHCI_HCD_DATE := 2016-11-29
+
+ccflags-y := \
+	-Wno-error \
+	-DUSB_VHCI_HCD_VERSION=\"$(VHCI_HCD_VERSION)\" \
+	-DUSB_VHCI_HCD_DATE=\"$(VHCI_HCD_DATE)\" \
+	-DUSB_VHCI_IOCIFC_VERSION=\"$(VHCI_HCD_VERSION)\" \
+	-DUSB_VHCI_IOCIFC_DATE=\"$(VHCI_HCD_DATE)\"
+
+ifdef DEBUG
+	ccflags-y += -DDEBUG
+endif
+
+# Documentation/kbuild/makefiles.txt, Compilation flags
+# Note: Flags with the same behaviour were previously named:
+# EXTRA_CFLAGS, EXTRA_AFLAGS and EXTRA_LDFLAGS.
+# They are still supported but their usage is deprecated.
+
+# EXTRA_CFLAGS := $(ccflags-y)
+
+
+# Debian 8.6 does not have build/include, but has source/include
+KDIR := $(shell test -d $(MODLIB)/build/include/linux && echo $(MODLIB)/build || echo $(MODLIB)/source)
+
+# do not use VERSION.PATCHLEVEL.SUBLEVEL, SUBLEVEL is often invalid
+KVER := $(shell echo $(KERNELRELEASE) | sed s/-.\*$$//)
+
+OLD_CORE_INCLUDE_DIR := $(KDIR)/drivers/usb/core
+ORIG_CORE_INCLUDE_DIR := $(KDIR)/include/linux/usb
+COPY_CORE_INCLUDE_DIR := $(src)/include/$(KVER)
+
+HCD_DIR := $(shell test -f $(ORIG_CORE_INCLUDE_DIR)/hcd.h && echo || (test -f $(OLD_CORE_INCLUDE_DIR)/hcd.h && echo $(OLD_CORE_INCLUDE_DIR) || echo $(COPY_CORE_INCLUDE_DIR)))
+
+
+ifneq ($(HCD_DIR),)
+
+# files that shall be built, but shall not be linked as part of built-in.o
+extra-y := include/linux/usb
+
+INC_DIR := $(obj)/include
+LIN_DIR := $(INC_DIR)/linux
+
+$(LIN_DIR)/usb:
+	@$(kecho) HCD_DIR=$(HCD_DIR)
+	@mkdir -p $(LIN_DIR)
+	@ln -sf $(HCD_DIR) $(LIN_DIR)/usb
+
+clean-dirs := $(LIN_DIR)
+
+# Some systems have kernel headers without <linux/usb/hcd.h>, so it supplies
+# by us from corresponding vanilla kernels. Our hcd.h should be used if and 
+# only if one not found in standard system paths. This prevents misterious bugs
+# on systems with patched/customized kernels (RedHat Enterprise Linux, etc).
+#
+# -idirafter -> search dir for header files, but do it after all directories specified with -I and
+# the standard system directories have been exhausted. dir is treated as a system include directory.
+
+ccflags-y += -idirafter $(INC_DIR)
+
+endif

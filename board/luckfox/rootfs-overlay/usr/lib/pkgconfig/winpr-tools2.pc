@@ -1,0 +1,15 @@
+prefix=/home/basit/arm_build/usr/local
+exec_prefix=/home/basit/arm_build/usr/local
+libdir=/home/basit/arm_build/usr/local/lib
+includedir=${prefix}/
+libs=-lwinpr-tools2
+
+Name: WinPR
+Description: WinPR: Windows Portable Runtime
+URL: http://www.freerdp.com/
+Version: 2.11.2
+Requires:
+Requires.private: winpr2 libssl
+Libs: -L${libdir} ${libs}
+Libs.private: -lcrypto
+Cflags: -I${includedir}
