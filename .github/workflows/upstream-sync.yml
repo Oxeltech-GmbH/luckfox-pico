@@ -1,13 +1,14 @@
-name: Sync from Upstream
+name: Sync with upstream and create pull request
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # Runs daily at midnight UTC
-  workflow_dispatch:        # Allow manual trigger from GitHub UI
+    - cron: '0 0 * * *'  # every day at midnight UTC
+  workflow_dispatch:       # allow manual trigger
 
 jobs:
-  sync-upstream:
+  sync_with_upstream:
     runs-on: ubuntu-latest
+    name: Sync upstream-sync with upstream/main
 
     steps:
       - name: Checkout upstream-sync branch
@@ -15,25 +16,32 @@ jobs:
         with:
           ref: upstream-sync
 
-      - name: Set up Git
-        run: |
-          git config --global user.name 'GitHub Bot'
-          git config --global user.email 'noreply@github.com'
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+        with:
+          target_sync_branch: upstream-sync
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_branch: main
+          upstream_sync_repo: LuckfoxTECH/luckfox-pico
 
-      - name: Add upstream remote
-        run: git remote add upstream https://github.com/LuckfoxTECH/luckfox-pico.git
+      - name: Show sync result
+        run: echo "Has new commits: ${{ steps.sync.outputs.has_new_commits }}"
 
-      - name: Fetch upstream changes
-        run: git fetch upstream
+  create_pull_request:
+    runs-on: ubuntu-latest
+    name: Create a pull request into main
 
-      - name: Rebase upstream/main onto upstream-sync
-        run: |
-          git checkout upstream-sync
-          git rebase upstream/main || echo "Already up to date"
+    needs: sync_with_upstream
 
-      - name: Push changes if any
-        run: |
-          git push origin upstream-sync || echo "No changes to push"
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Fetch synced branch
+        run: git fetch origin upstream-sync:upstream-sync
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -41,7 +49,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           source: upstream-sync
           base: main
-          title: '🔄 Sync with upstream'
-          body: 'This pull request brings in updates from the original repository.'
-          commit-message: 'chore: sync with upstream'
-
+          title: 'Sync with upstream'
+          body: 'Automated pull request to merge updates from upstream.'
+          commit-message: 'chore: merge upstream updates into main'
