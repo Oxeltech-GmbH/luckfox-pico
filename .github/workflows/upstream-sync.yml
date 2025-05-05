@@ -1,0 +1,47 @@
+name: Sync from Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'    # Runs daily at midnight UTC
+  workflow_dispatch:        # Allow manual trigger from GitHub UI
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout upstream-sync branch
+        uses: actions/checkout@v4
+        with:
+          ref: upstream-sync
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'GitHub Bot'
+          git config --global user.email 'noreply@github.com'
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/LuckfoxTECH/luckfox-pico.git
+
+      - name: Fetch upstream changes
+        run: git fetch upstream
+
+      - name: Rebase upstream/main onto upstream-sync
+        run: |
+          git checkout upstream-sync
+          git rebase upstream/main || echo "Already up to date"
+
+      - name: Push changes if any
+        run: |
+          git push origin upstream-sync || echo "No changes to push"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          source: upstream-sync
+          base: main
+          title: '🔄 Sync with upstream'
+          body: 'This pull request brings in updates from the original repository.'
+          commit-message: 'chore: sync with upstream'
+
