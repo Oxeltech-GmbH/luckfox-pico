@@ -26,7 +26,7 @@ jobs:
           upstream_sync_repo: LuckfoxTECH/luckfox-pico
 
       - name: Show sync result
-        run: echo "Has new commits: ${{ steps.sync.outputs.has_new_commits }}"
+        run: echo '${{ steps.sync.outputs.has_new_commits }}'
 
   create_pull_request:
     runs-on: ubuntu-latest
